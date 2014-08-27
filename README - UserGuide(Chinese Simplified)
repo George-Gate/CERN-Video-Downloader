@@ -1,0 +1,111 @@
+本视频下载程序包括以下Python3程序：
+MakeDownloadList.py - 用于创建或更新下载列表
+PerformDownload.py  - 按照下载列表进行下载
+resetErrorStatus.py - 重置下载列表中被标记为错误的下载项
+----------------------------------------------------------------------
+
+1.首先请自行熟悉CERN的视频地址格式
+    CERN的每一个Lecture会有一个对应的Event ID，比如说某一堂课的信息页地址为：https://indico.cern.ch/event/316987/，那么该Lecture的Event ID就是316987。
+    每个Lecture的视频地址都与这个Event ID有关。上述Lecture的视频在线观看页面是https://cds.cern.ch/record/1713037，在这个页面中可以找到不同分辨率的视频对应的下载地址。
+    在MakeDownloadList.py中可以对视频下载地址进行修改。
+    注：'lecture.json'是视频播放器的配置文件。
+
+2.找出你要下载的课程的Event ID，然后将该ID记录在一个名为'eventID'的文本文件中(注意，没有扩展名)。文件'eventID'可以存在于程序执行目录及其任意子目录中。（可以在Ｐython中使用os.getcwd()查看当前目录，用os.chdir()改变当前目录。）每个'eventID'文件中可以记录多个课程的Event ID，每个ID单独占一行。MakeDownloadList.py会自动搜索所有'eventID'，并生成相应的下载项。下载项的默认存放地址是：
+        “eventID所在目录”/行号
+    其中行号是指相应的Event ID在'eventID'文件中的行号。
+
+3.执行MakeDownloadList.py生成下载地址列表'downloadList.csv'
+
+4.执行PerformDownload.py进行下载
+
+5.再次执行MakeDownloadList.py，从已下载的'lecture.json'文件中读取截图文件的地址
+
+6.执行PerformDownload.py进行下载
+
+    注意：
+    1.如果在PerformDownload.py中设置了smallFileMode=False，那么在运行过程中可以随时按Ctrl+C中断，可以断点续传。(不要直接强制退出，否则需要手动将'downloadList.csv'中的'Downloading'删掉。删除时注意不能改变文件大小，需要用空格替换已有字符，否则程序将出错。)
+    2.如果发现'downloadList.csv'中的某些下载项被标记为各种奇怪的错误，想重新尝试下载时，请执行resetErrorStatus.py，此程序将重置除了"Downloaded"、"Downloading"、"Paused"外的所有状态。
+    3.不要同时运行多个PerformDownload.py，这样会造成重复下载。使用CERN的有线网络进行下载时单线程的速度已经足够快了（接近硬盘的极限）。
+    4.完成下载后，你的目录结构应该是长这个样的：
+            .
+            ├── 01.Particle World
+            │   ├── 1
+            │   │   ├── 01.1_camera_1080p.mp4
+            │   │   ├── 01.1_slides_1080p.mp4
+            │   │   ├── lecture.json
+            │   │   └── thumbs
+            │   │       ├── 20140701100526.png
+            │   │       ......
+            │   │       ├── 20140701104649.png
+            │   │       ├── 20140701104837.png
+            │   │       ├── 20140701105114.png
+            │   │       └── 20140701105129.png
+            │   ├── 2
+            │   │   ├── 01.2_camera_1080p.mp4
+            │   │   ├── 01.2_slides_1080p.mp4
+            │   │   ├── lecture.json
+            │   │   └── thumbs
+            │   │       ├── 20140701110700.png
+            │   │       ├── 20140701110750.png
+            │   │       ......
+            │   │       ├── 20140701114855.png
+            │   │       └── 20140701115039.png
+            │   ├── 3
+            │   │   ├── 01.3_camera_1080p.mp4
+            │   │   ├── 01.3_slides_1080p.mp4
+            │   │   ├── lecture.json
+            │   │   └── thumbs
+            │   │       ├── 20140702084718.png
+            │   │       ......
+            │   │       └── 20140702093605.png
+            │   └── eventID
+            ├── 02.Introduction to Accerlerator Physics
+            │   ├── 1
+            │   │   ├── 02.1_camera_1080p.mp4
+            │   │   ├── 02.1_slides_1080p.mp4
+            │   │   ├── lecture.json
+            │   │   └── thumbs
+            │   │       ├── 20140702100408.png
+            │   │       ......
+            │   │       ├── 20140702105239.png
+            │   │       ├── 20140702105317.png
+            │   │       └── 20140702105521.png
+            │   ├── 2
+            │   │   ├── 02.2_camera_1080p.mp4
+            │   │   ├── 02.2_slides_1080p.mp4
+            │   │   ├── lecture.json
+            │   │   └── thumbs
+            │   │       ├── 20140703101229.png
+            │   │       ......
+            │   │       ├── 20140703105532.png
+            │   │       └── 20140703105610.png
+            │   ├── 3
+            │   │   ├── 02.3_camera_1080p.mp4
+            │   │   ├── 02.3_slides_1080p.mp4
+            │   │   ├── lecture.json
+            │   │   └── thumbs
+            │   │       ├── 20140707085325.png
+            │   │       ......
+            │   │       ├── 20140707093710.png
+            │   │       └── 20140707093733.png
+            │   ├── 4
+            │   │   ├── 02.4_camera_1080p.mp4
+            │   │   ├── 02.4_slides_1080p.mp4
+            │   │   ├── lecture.json
+            │   │   └── thumbs
+            │   │       ├── 20140707110553.png
+            │   │       ......
+            │   │       └── 20140707114835.png
+            │   ├── 5
+            │   │   ├── 02.5_camera_1080p.mp4
+            │   │   ├── 02.5_slides_1080p.mp4
+            │   │   ├── lecture.json
+            │   │   └── thumbs
+            │   │       ├── 20140708100752.png
+            │   │       ├── 20140708100812.png
+            │   │       ......
+            │   │       ├── 20140708105748.png
+            │   │       ├── 20140708105837.png
+            │   │       └── 20140708105911.png
+            │   └── eventID
+            .........
