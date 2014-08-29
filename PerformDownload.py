@@ -1,9 +1,8 @@
 import urllib.request
 import os
-import configparser
 
 '''if set smallFileMode to True, the program will use simpleDownload method, which may be faster for many small files but do not support break point resume.''' 
-smallFileMode=False  
+smallFileMode=False
 
 
 def showProgress(blockNum, blockSize, totalSize):
@@ -47,8 +46,13 @@ filename should be a string'''
 
 def download(url, filename):
     ''' Download url to filename, support break point resume. '''
+    import errno
+    import socket
+    import time
+    import configparser
+    
     # get url info
-    urlHandler = urllib.request.urlopen( url )
+    urlHandler = urllib.request.urlopen( url,timeout=10 )
     headers = urlHandler.info()
     size = int(headers.get('Content-Length'))
     lastmodified=headers.get('Last-Modified')
@@ -88,33 +92,82 @@ def download(url, filename):
     startpoint = downloaded
     
     # start download
-    if startpoint < size:
-        oneTimeSize = 65535 #64KB/time
-        
-        urlHandler = urllib.request.Request(url)
-        urlHandler.add_header("Range", "bytes=%d-%d" % (startpoint, size))
-        urlHandler = urllib.request.urlopen(urlHandler)
-
-        data = urlHandler.read( oneTimeSize )
-        with open( filename, 'ab+' ) as filehandle:
-            while data:
-                filehandle.write( data )
-                downloaded += len( data )
-                showProgress(1, downloaded, size)
+    connectionError=True
+    resetCounter=0
+    while connectionError and resetCounter<10:
+        connectionError=False
+        try:
+            if startpoint < size:
+                oneTimeSize = 65535 #64KB/time
+                
+                urlHandler = urllib.request.Request(url)
+                urlHandler.add_header("Range", "bytes=%d-%d" % (startpoint, size))
+                urlHandler = urllib.request.urlopen(urlHandler,timeout=10)
+                
                 data = urlHandler.read( oneTimeSize )
-    # end if      
+                with open( filename, 'ab+' ) as filehandle:
+                    while data:
+                        filehandle.write( data )
+                        downloaded += len( data )
+                        showProgress(1, downloaded, size)
+                        data = urlHandler.read( oneTimeSize )
+            # end if
+        except urllib.error.HTTPError as errinfo:
+            # HTTP Error
+            if errinfo.code==errno.ECONNRESET:
+                # Connection reset by peer, connect again
+                connectionError=True
+                resetCounter+=1
+            else:
+                raise
+        except urllib.error.URLError as errinfo:
+            # URL Error
+            if (isinstance(errinfo.reason,socket.gaierror) and
+                  errinfo.reason.errno==-2):
+                # Name or service not known, usually caused by internet break or wrong server address
+                connectionError=True
+                resetCounter+=1
+                time.sleep(10)
+            else:
+                raise
+        except socket.timeout:
+            # request timeout
+            connectionError=True
+            resetCounter+=1
+        # end try
+    # end while
+          
+    # if resetCounter>10 and there is a connectionError then raise it
+    if connectionError:
+        raise Exception('Connection Error')
+          
+    # check if download finished successfully
+    try:
+        downloaded = os.path.getsize(filename )
+    except OSError:
+        downloaded = 0
     
-    # remove info file
-    os.remove(infoname) 
-    
-    return 'Success'
-#end {def download}                    
+    if downloaded==size:
+        # remove info file
+        os.remove(infoname) 
+        return 'Success'
+    elif downloaded>size:
+        os.remove(infoname)
+        return 'The size of file downloaded is bigger than that on server.'
+    else:
+        return ('Download Not Finished! The size of file downloaded is smaller than that on server.'
+                 ' If this error continues, please try delete the file downloaded.')
+#end {def download}
                     
 def simpleDownload(url, filename):
     '''Simple download method, do not suppot break point resume, but may be faster for small files'''
     urllib.request.urlretrieve(url, filename, showProgress)
-    
+    return 'Success'
 # end {def simpleDownload}
+
+
+#-----------------------------------------------------------------------------------------------------------------
+# main procedure start from here
 
 # get current working directory
                                 #currentPath=os.path.dirname(performDownload)
@@ -145,20 +198,24 @@ with open('downloadList.csv','rb+') as record:
             checkDir(currentPath+localname[1:])  # check if parent dir exists
             try:
                 if smallFileMode:
-                    simpleDownload(url,
-                                   currentPath+localname[1:])
+                    result=simpleDownload(url,
+                                          currentPath+localname[1:])
                 else:
-                    download(url,
-                             currentPath+localname[1:])
-            # Exception handling
+                    result=download(url,
+                                    currentPath+localname[1:])
+                # if download not success, raise exception
+                if result!='Success':
+                    raise Exception(result)
+
             except urllib.error.HTTPError as errinfo:
+                # 404 Not Found
                 print ('\r'+str(errinfo))
-                # write errinfo to file
                 recordToFile(record,str(errinfo))
             except KeyboardInterrupt as errinfo:
+                # Ctrl+C Interrupt
                 print ('\rDownload Abort!'+20*' ')
                 if smallFileMode:
-                    # reset status to 'Queued'
+                    # reset status to 'Queued' since smallFileMode don't support break point resume
                     recordToFile(record,'Queued')
                 else:
                     # set status to 'Paused'
@@ -166,20 +223,20 @@ with open('downloadList.csv','rb+') as record:
                 onError=True
                 break
             except Exception as errinfo:
+                # Other exceptions
                 print ('\rUnexpected Error!('+str(errinfo)+')')
-                # write errinfo to file
                 recordToFile(record,str(errinfo))
             except:
+                # Unexpected exceptions
                 print ('\rUnexpected Error!'+20*' ')
-                # write 'Unexpected Error' to file
                 recordToFile(record,'Unexpected Error')
             else:
-                # download success, write 'Downloaded' to file
+                # Download success, write 'Downloaded' to file
                 recordToFile(record,'Downloaded')
             
             print ()   # output new line for good layout
         # if status is 'Unexpected Error', 'Downloaded' or 'Downloading' etc. then skip
-        elif status in {'UNEXPECTED ERROR','DOWNLOADED','DOWNLOADING','404 NOT FOUND'}:
+        elif status in {'UNEXPECTED ERROR','DOWNLOADED','DOWNLOADING'}:
             pass
         else:
             print ('Unexpected status:',status,'(Download skipped).')
