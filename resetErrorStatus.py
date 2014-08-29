@@ -1,4 +1,5 @@
 import os
+import shutil
 
 def recordToFile(record,msg):
     '''Record msg to file, using binary mode'''
@@ -15,6 +16,9 @@ def recordToFile(record,msg):
                         # os.chdir(str(currentPath))
 currentPath=os.getcwd()
 
+# backup 'downloadList.csv'
+shutil.copy2('downloadList.csv','downloadList_old.csv')
+
 # read download info from 'downloadList.csv'
 with open('downloadList.csv') as f:
     downloadlist=f.readlines()
@@ -25,11 +29,11 @@ with open('downloadList.csv','rb+') as record:
     for item in downloadlist:
         # parse item
         status, localname, url = item[:-1].split(';')
-        status = status.strip(' ').upper()
         # reset error status to 'Queued'
-        if status not in {'QUEUED','DOWNLOADING','DOWNLOADED','PAUSED'}:
+        if status.strip(' ').upper() not in {'QUEUED','DOWNLOADING','DOWNLOADED','PAUSED'}:
             # record status
             recordToFile(record,'Queued')
+            print ('Change ' + status + ' to Queued.')
             counter=counter+1
         # end {if status...}
         
@@ -38,5 +42,6 @@ with open('downloadList.csv','rb+') as record:
 
 # end {with open ... as record}
 print ('Reseted',counter,'items to "Queued", No Error Occurred.')
+print ('A backup of original download list is saved to "downloadList_old.csv"')
 
 
