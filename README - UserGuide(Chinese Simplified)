@@ -13,8 +13,10 @@ resetErrorStatus.py - 重置下载列表中被标记为错误的下载项
 2.找出你要下载的课程的Event ID，然后将该ID记录在一个名为'eventID'的文本文件中(注意，没有扩展名)。文件'eventID'可以存在于程序执行目录及其任意子目录中。（可以在Ｐython中使用os.getcwd()查看当前目录，用os.chdir()改变当前目录。）每个'eventID'文件中可以记录多个课程的Event ID，每个ID单独占一行。MakeDownloadList.py会自动搜索所有'eventID'，并生成相应的下载项。下载项的默认存放地址是：
         “eventID所在目录”/行号
     其中行号是指相应的Event ID在'eventID'文件中的行号。
+    注：路径和文件名不能包含英语分号';'
 
 3.执行MakeDownloadList.py生成下载地址列表'downloadList.csv'
+    注：用 exec(open('MakeDownloadList.py').read()) 来执行MakeDownloadList.py
 
 4.执行PerformDownload.py进行下载
 
